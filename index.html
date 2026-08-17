@@ -105,7 +105,7 @@
   .gift-top{display:flex;align-items:center;justify-content:space-between}
   .medal{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:26px;
     background:linear-gradient(160deg,#fff,#f3ead2);border:1px solid var(--gold);
-    box-shadow:inset 0 0 0 3px #fffdf6;transition:transform .3s}
+    box-shadow:inset 0 0 0 3px #fffdf6;transition:transform .3s;flex-shrink:0}
   .gift:hover .medal{transform:rotate(-8deg) scale(1.07)}
   .cat{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:#8a6f2f;
     background:rgba(201,162,75,.15);padding:5px 10px;border-radius:999px}
@@ -170,15 +170,15 @@
   .badge.free{background:#e3eee1;color:#2f5b3a}
   .strong{font-weight:800}
   .tel{font-variant-numeric:tabular-nums;white-space:nowrap}
-  .wa{color:#1a7f4e;text-decoration:none;font-size:16px;margin-left:5px;display:inline-block;transition:transform .2s}
-  .wa:hover{transform:scale(1.3)}
   .msg{max-width:210px;font-style:italic;color:var(--ink-soft)}
   .date{white-space:nowrap;color:var(--ink-soft);font-size:12.5px}
   .muted-cell{color:#b3a888}
   .mini{border:1px solid rgba(28,53,42,.25);background:#fff;border-radius:8px;padding:6px 11px;
-    font-weight:800;font-size:12px;cursor:pointer;color:var(--ink);transition:.2s;white-space:nowrap}
+    font-weight:800;font-size:12px;cursor:pointer;color:var(--ink);transition:.2s;white-space:nowrap;text-decoration:none;display:inline-block}
   .mini:hover{border-color:var(--gold);background:rgba(201,162,75,.14)}
   .mini.danger:hover{border-color:#b4424c;color:#b4424c;background:rgba(180,66,76,.07)}
+  .wa-btn{background:#e9f9ef;border-color:#25d366 !important;color:#128c4b !important;text-decoration:none;display:inline-block;margin-right:6px}
+  .wa-btn:hover{background:#25d366;color:#fff !important}
   .add-form{display:grid;grid-template-columns:2fr .55fr .8fr 1.1fr auto;gap:12px;align-items:end}
   .add-form label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6d5c33;margin-bottom:5px}
   .add-form input,.add-form select{width:100%}
@@ -347,6 +347,17 @@
   </section>
 
   <section class="panel">
+    <h3 style="margin-bottom:6px">💬 Mensajes de agradecimiento por WhatsApp</h3>
+    <p style="color:var(--ink-soft);font-size:13.5px;margin:0 0 14px;line-height:1.6">
+      Esta es la plantilla que se enviará al pulsar el botón <b style="color:#128c4b">💬 WhatsApp</b> de cada invitado.
+      Puedes usar <code style="background:rgba(28,53,42,.1);padding:2px 6px;border-radius:5px">{nombre}</code> y
+      <code style="background:rgba(28,53,42,.1);padding:2px 6px;border-radius:5px">{regalo}</code>, se reemplazan automáticamente.
+    </p>
+    <textarea id="waTemplate" style="width:100%;min-height:84px;padding:12px 14px;border-radius:10px;border:1.5px solid #d8c9a0;font:500 14px Karla;resize:vertical;background:#fff;color:var(--ink)"></textarea>
+    <p style="font-size:13px;color:#6d5c33;margin:12px 0 0;line-height:1.6"><b>Vista previa:</b> <em id="waPreview"></em></p>
+  </section>
+
+  <section class="panel">
     <h3 style="margin-bottom:14px">Añadir un regalo nuevo</h3>
     <form class="add-form" id="addGiftForm">
       <div><label for="fName">Nombre del regalo</label><input id="fName" required placeholder="Ej. Licuadora"></div>
@@ -430,15 +441,16 @@
 <div id="confetti" aria-hidden="true"></div>
 
 <script>
-/* ═══════════ CONFIGURACIÓN — EDITA AQUÍ ═══════════ */
+/* ═══════════ CONFIGURACIÓN ═══════════ */
 const CONFIG = {
-  couple: ["Valentina", "Alejandro"],
-  date: "2027-06-20T17:00:00",
-  venue: "Hacienda Los Olivos",
+  couple: ["Jeury", "Melany"],
+  date: "2027-05-09T17:00:00",
+  venue: " ",
   supabaseUrl: "https://dlldzpduodnmpjmgxupm.supabase.co",
-  supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbGR6cGR1b2RubXBqbWd4dXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4OTA3NzQsImV4cCI6MjEwMjQ2Njc3NH0.LPd4wTpD_jHFV0QeYHU_ou0zIvIT37jtNxots28279o"
+  supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsbGR6cGR1b2RubXBqbWd4dXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4OTA3NzQsImV4cCI6MjEwMjQ2Njc3NH0.LPd4wTpD_jHFV0QeYHU_ou0zIvIT37jtNxots28279o",
+  whatsappMsg: "Hola {nombre} 👋 ¡Mil gracias por tu regalo “{regalo}” para nuestra boda! Nos vemos muy pronto 💍"
 };
-/* ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════ */
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -463,7 +475,23 @@ function anyOverlayOpen(){ return !!document.querySelector('.overlay.open'); }
 function fmtDate(t){ return new Date(t).toLocaleString('es', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}); }
 function priceLabel(g){ return Number(g.price) > 0 ? '$' + Number(g.price).toLocaleString('es') : 'Aporte libre'; }
 
-/* ── Encabezado ── */
+/* ── WhatsApp: plantillas y enlaces ── */
+function getWaTemplate(){
+  return localStorage.getItem('boda_wa_template')
+      || CONFIG.whatsappMsg
+      || 'Hola {nombre} 👋 ¡Gracias por tu regalo “{regalo}”! 💍';
+}
+function buildWaMsg(nombre, regalo){
+  return getWaTemplate()
+    .replace(/\{nombre\}/g, (nombre || '').split(' ')[0])
+    .replace(/\{regalo\}/g, regalo || '');
+}
+function waHref(phone, nombre, regalo){
+  const digits = (phone || '').replace(/\D/g,'');
+  return 'https://wa.me/' + digits + '?text=' + encodeURIComponent(buildWaMsg(nombre, regalo));
+}
+
+/* ── Encabezado y cuenta regresiva ── */
 function initHeader(){
   $('#nameA').textContent = CONFIG.couple[0];
   $('#nameB').textContent = CONFIG.couple[1];
@@ -508,26 +536,30 @@ function renderCats(){
   $('#catList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
 }
 function renderGrid(animate){
-  const list = gifts.filter(g => !g.is_reserved &&
-    (activeCat==='Todos' || g.category===activeCat) && g.name.toLowerCase().includes(term));
+  const list = gifts.filter(g => {
+    const matchCat = activeCat==='Todos' || g.category===activeCat;
+    const matchTerm = g.name.toLowerCase().includes(term);
+    if (g.is_open) return matchCat && matchTerm;      // regalos abiertos: siempre visibles
+    return !g.is_reserved && matchCat && matchTerm;   // normales: solo si están libres
+  });
   $('#grid').innerHTML = list.map((g,i) => `
     <article class="gift" style="--i:${i}${animate?'':';animation:none'}" data-id="${g.id}">
       <div class="gift-top"><span class="medal">${g.icon}</span><span class="cat">${esc(g.category)}</span></div>
       <h3 class="gift-name">${esc(g.name)}</h3>
       <p class="gift-price${Number(g.price)>0?'':' is-free'}">${Number(g.price)>0 ? priceLabel(g) : 'Aporte libre 💛'}</p>
-      <button class="reserve-btn" data-id="${g.id}">Reservar este regalo</button>
+      ${g.is_open ? `<p style="margin:0;font-size:12.5px;color:#8c4a54;font-weight:700;text-align:center">
+        🎉 ${g.contribution_count || 0} persona${(g.contribution_count||0)===1?'':'s'} ha${(g.contribution_count||0)===1?'':'n'} aportado</p>` : ''}
+      <button class="reserve-btn" data-id="${g.id}">${g.is_open ? 'Hacer mi aporte 💝' : 'Reservar este regalo'}</button>
     </article>`).join('');
   const empty = $('#emptyState');
   empty.hidden = list.length > 0;
-  const anyFree = gifts.some(g => !g.is_reserved);
+  const anyFree = gifts.some(g => g.is_open || !g.is_reserved);
   $('#emptyTitle').textContent = anyFree ? 'Sin resultados' : '¡Mesa completa! 🎉';
-  $('#emptyMsg').textContent = anyFree
-    ? 'No encontramos regalos con ese filtro. Prueba otra categoría o búsqueda.'
-    : 'Todos los regalos fueron reservados. ¡Gracias por tanto cariño!';
+  $('#emptyMsg').textContent = anyFree ? 'No encontramos regalos con ese filtro.' : 'Todos los regalos fueron reservados. ¡Gracias!';
 }
 function renderAll(animate){ renderCats(); renderGrid(animate); renderProgress(); }
 
-/* ── Reservar (función atómica en la base de datos) ── */
+/* ── Reservar / aportar ── */
 function openReserve(id){
   const g = gifts.find(x => x.id === id);
   if (!g || g.is_reserved) return;
@@ -550,22 +582,28 @@ async function confirmReserve(e){
   if (!okName || !okPhone) return;
 
   const btn = $('#confirmBtn');
-  btn.disabled = true; btn.textContent = 'Reservando…';
+  btn.disabled = true; btn.textContent = 'Confirmando…';
   const { data, error } = await sb.rpc('reserve_gift', {
     p_gift_id: pendingId, p_name: name, p_phone: phone, p_message: msg || null
   });
   btn.disabled = false; btn.textContent = 'Confirmar regalo 💝';
 
-  if (error){ toast(error.message || 'No se pudo reservar. Intenta de nuevo.'); return; }
+  if (error){ toast(error.message || 'No se pudo confirmar.'); return; }
   if (data !== true){
     closeOv($('#reserveOverlay'));
     toast('Ups, alguien más acaba de reservar este regalo 💔');
     loadGuestGifts(); return;
   }
   const g = gifts.find(x => x.id === pendingId);
-  if (g) g.is_reserved = true;
-  const card = document.querySelector(`.gift[data-id="${pendingId}"]`);
-  if (card) card.classList.add('leaving');
+  if (g){
+    if (g.is_open){
+      g.contribution_count = (g.contribution_count || 0) + 1;   // regalo abierto: solo sube el contador
+    } else {
+      g.is_reserved = true;
+      const card = document.querySelector(`.gift[data-id="${pendingId}"]`);
+      if (card) card.classList.add('leaving');
+    }
+  }
   $('#succName').textContent = name.split(' ')[0];
   $('#succGift').textContent = g ? g.icon + ' ' + g.name : '';
   $('#reserveFormView').hidden = true; $('#successView').hidden = false;
@@ -602,28 +640,67 @@ async function loadAdminData(){
   const { data, error } = await sb.from('gifts').select('*').order('sort_order');
   if (error){ console.error(error); toast('Error al cargar los datos'); return; }
   adminGifts = data || [];
+  // Cargar aportes de regalos abiertos ANTES de renderizar (sin recursión)
+  const openGifts = adminGifts.filter(g => g.is_open);
+  if (openGifts.length){
+    const openIds = openGifts.map(g => g.id);
+    const { data: contribs } = await sb.from('gift_contributions').select('*')
+      .in('gift_id', openIds).order('created_at', {ascending:false});
+    openGifts.forEach(g => {
+      g._contributions = (contribs || []).filter(c => c.gift_id === g.id);
+    });
+  }
   renderAdmin();
 }
 function renderAdmin(){
-  const total = adminGifts.length, res = adminGifts.filter(g => g.reserved).length;
+  const total = adminGifts.length;
+  const res = adminGifts.filter(g => g.reserved && !g.is_open).length;
+  const open = adminGifts.filter(g => g.is_open).length;
   $('#stReserved').textContent = res;
-  $('#stFree').textContent = total - res;
+  $('#stFree').textContent = Math.max(0, total - res - open);
   $('#stPct').textContent = (total ? Math.round(res/total*100) : 0) + '%';
   const q = ($('#aSearch').value || '').toLowerCase();
   const list = adminGifts.filter(g => (g.name + ' ' + (g.reserved ? g.guest_name + ' ' + g.guest_phone : '')).toLowerCase().includes(q));
   $('#noRows').hidden = list.length > 0;
   $('#aRows').innerHTML = list.map(g => {
     const giftCell = `<td><div class="cell-gift"><span>${g.icon}</span>${esc(g.name)}</div></td>`;
+
+    // Regalo abierto (aporte): lista de aportes, cada uno con WhatsApp y botón para eliminar ✨ NUEVO
+    if (g.is_open){
+      const contribs = g._contributions || [];
+      return `<tr>${giftCell}
+        <td><span class="badge" style="background:#fef3c7;color:#92400e">Aporte abierto</span></td>
+        <td colspan="5" class="muted-cell">
+          ${contribs.length === 0 ? '<em>Aún nadie ha aportado.</em>' :
+            contribs.map(c => `<div style="padding:5px 0;border-bottom:1px dashed #ddd;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <b>${esc(c.guest_name)}</b> · ${esc(c.guest_phone)}
+              ${c.guest_message ? ' · <i>' + esc(c.guest_message) + '</i>' : ''}
+              <small style="color:#888">(${fmtDate(c.created_at)})</small>
+              <a class="mini wa-btn" style="font-size:11px;padding:3px 9px"
+                 href="${waHref(c.guest_phone, c.guest_name, g.name)}" target="_blank" rel="noopener">💬 WhatsApp</a>
+              <button class="mini danger" style="font-size:11px;padding:3px 9px"
+                 data-act="removeContrib" data-contrib="${c.id}" data-gift="${g.id}"
+                 title="Eliminar este aporte">✕ Quitar</button>
+            </div>`).join('')}
+        </td></tr>`;
+    }
+
+    // Regalo reservado: invitado + botón de WhatsApp personalizado
     if (g.reserved){
-      const digits = (g.guest_phone || '').replace(/\D/g,'');
       return `<tr>${giftCell}
         <td><span class="badge res">Reservado</span></td>
         <td class="strong">${esc(g.guest_name)}</td>
-        <td class="tel">${esc(g.guest_phone)} <a class="wa" href="https://wa.me/${digits}" target="_blank" rel="noopener" title="Enviar WhatsApp">✆</a></td>
+        <td class="tel">${esc(g.guest_phone)}</td>
         <td class="msg">${esc(g.guest_message || '—')}</td>
         <td class="date">${fmtDate(g.reserved_at)}</td>
-        <td><button class="mini" data-act="restore" data-id="${g.id}">↩ Liberar</button></td></tr>`;
+        <td style="white-space:nowrap">
+          <a class="mini wa-btn" href="${waHref(g.guest_phone, g.guest_name, g.name)}"
+             target="_blank" rel="noopener">💬 WhatsApp</a>
+          <button class="mini" data-act="restore" data-id="${g.id}">↩ Liberar</button>
+        </td></tr>`;
     }
+
+    // Regalo libre
     return `<tr>${giftCell}
       <td><span class="badge free">Libre</span></td>
       <td colspan="4" class="muted-cell">Disponible para los invitados</td>
@@ -708,6 +785,25 @@ $('#aSearch').addEventListener('input', renderAdmin);
 $('#aRefresh').addEventListener('click', () => loadAdminData());
 $('#aRows').addEventListener('click', async e => {
   const b = e.target.closest('button[data-act]'); if (!b) return;
+
+  // ✨ NUEVO: eliminar un aporte individual del regalo abierto
+  if (b.dataset.act === 'removeContrib'){
+    const contribId = b.dataset.contrib;
+    const giftId = b.dataset.gift;
+    const g = adminGifts.find(x => x.id === giftId);
+    const c = (g?._contributions || []).find(x => x.id === contribId);
+    const who = c ? c.guest_name : 'este invitado';
+    if (confirm(`¿Eliminar el aporte de ${who}?\nEsta acción no se puede deshacer.`)){
+      b.disabled = true;
+      const { error } = await sb.from('gift_contributions').delete().eq('id', contribId);
+      if (error){ toast('Error al eliminar el aporte'); b.disabled = false; return; }
+      toast('Aporte eliminado');
+      await loadAdminData();       // recarga la tabla del admin
+      loadGuestGifts();            // actualiza el contador público 🎉
+    }
+    return;
+  }
+
   const g = adminGifts.find(x => x.id === b.dataset.id); if (!g) return;
   b.disabled = true;
   if (b.dataset.act === 'restore'){
@@ -740,8 +836,12 @@ $('#addGiftForm').addEventListener('submit', async e => {
   e.target.reset(); toast('Regalo añadido a la mesa ✨'); loadAdminData();
 });
 $('#exportBtn').addEventListener('click', () => {
-  const rows = [['Regalo','Invitado','Teléfono','Mensaje','Fecha'],
-    ...adminGifts.filter(g => g.reserved).map(g => [g.name, g.guest_name, g.guest_phone, g.guest_message || '', fmtDate(g.reserved_at)])];
+  const rows = [['Regalo','Invitado','Teléfono','Mensaje','Fecha']];
+  adminGifts.filter(g => g.reserved && !g.is_open).forEach(g =>
+    rows.push([g.name, g.guest_name, g.guest_phone, g.guest_message || '', fmtDate(g.reserved_at)]));
+  adminGifts.filter(g => g.is_open).forEach(g =>
+    (g._contributions || []).forEach(c =>
+      rows.push([g.name + ' (aporte)', c.guest_name, c.guest_phone, c.guest_message || '', fmtDate(c.created_at)])));
   const csv = '\uFEFF' + rows.map(r => r.map(x => '"' + String(x).replace(/"/g,'""') + '"').join(';')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
@@ -752,6 +852,20 @@ $('#exportBtn').addEventListener('click', () => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape'){ closeOv($('#reserveOverlay')); closeOv($('#adminOverlay')); }
 });
+
+/* ── Panel de plantilla de WhatsApp ── */
+(function initWaPanel(){
+  const waT = $('#waTemplate');
+  if (!waT) return;
+  waT.value = getWaTemplate();
+  const upd = () => { $('#waPreview').textContent = buildWaMsg('María Fernanda López', 'Cafetera espresso'); };
+  upd();
+  waT.addEventListener('input', () => {
+    localStorage.setItem('boda_wa_template', waT.value.trim() || CONFIG.whatsappMsg);
+    upd();
+    if (adminMode && adminGifts.length) renderAdmin();  // actualiza los botones al instante
+  });
+})();
 
 /* ── Pétalos ambientales ── */
 (function(){

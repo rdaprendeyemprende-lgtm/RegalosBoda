@@ -314,7 +314,7 @@
 
   <footer>
     <p class="note">🔒 Tus datos solo son visibles para los novios.</p>
-    <button class="ghost-link" id="adminBtn">¿Eres de los novios? Inicia sesión aquí</button>
+    <button class="ghost-link" id="adminBtn">¿Eres administrador? Inicia sesión aquí</button>
   </footer>
 </main>
 
@@ -322,7 +322,7 @@
 <main id="adminView" class="wrap" hidden>
   <header class="admin-top">
     <div>
-      <p class="eyebrow">Panel privado · solo los novios</p>
+      <p class="eyebrow">Panel privado · administradores</p>
       <h2 class="admin-title">Administración de la mesa de regalos</h2>
       <span class="session-chip" id="sessionEmail"></span>
     </div>
@@ -425,9 +425,9 @@
   <div class="modal small" role="dialog" aria-modal="true">
     <button class="modal-close" id="adminClose" aria-label="Cerrar">×</button>
     <div id="loginView">
-      <div class="pin-ico">💌</div>
-      <h3>Acceso de los novios</h3>
-      <p class="sub">Ingresa el correo y la contraseña que creaste en Supabase.</p>
+      <div class="pin-ico">🔐</div>
+      <h3>Acceso de administradores</h3>
+      <p class="sub">Ingresa tu correo y contraseña de administrador.</p>
       <form id="loginForm">
         <div class="field"><label for="loginEmail">Correo</label><input id="loginEmail" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required></div>
         <div class="field"><label for="loginPass">Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
@@ -435,16 +435,7 @@
         <button class="btn full" id="loginBtn" style="margin-top:8px">Entrar</button>
       </form>
     </div>
-    <div id="setupView" hidden>
-      <div class="pin-ico">🔑</div>
-      <h3>Activar administrador</h3>
-      <p class="sub">Es la primera vez que entras. Ingresa el <b>código de activación</b> que definiste en el script SQL (por defecto <code>2610</code>). Solo se hace una vez.</p>
-      <form id="setupForm">
-        <div class="field"><label for="setupCode">Código de activación</label><input id="setupCode" placeholder="••••"></div>
-        <p class="err" id="setupErr" style="text-align:center"></p>
-        <button class="btn full">Activar cuenta</button>
-      </form>
-    </div>
+
   </div>
 </div>
 
@@ -528,7 +519,8 @@ async function loadGuestGifts(animate = false){
   if (!CONFIG_OK) return;
   const { data, error } = await sb.from('gifts_public').select('*').order('sort_order');
   if (error){ console.error(error); toast('No se pudo conectar con la base de datos'); return; }
-  gifts = data || [];
+  console.log('gifts_public rows:', data);
+  gifts = (data || []).map(g => ({ ...g, is_reserved: g.is_reserved ?? g.reserved ?? false }));
   renderAll(animate);
 }
 function renderProgress(){
@@ -650,7 +642,16 @@ function showGuest(){
 async function loadAdminData(){
   const { data, error } = await sb.from('gifts').select('*').order('sort_order');
   if (error){ console.error(error); toast('Error al cargar los datos'); return; }
-  adminGifts = data || [];
+  console.log('gifts (admin) rows:', data);
+  adminGifts = (data || []).map(g => ({
+    ...g,
+    // Normalizar nombres de columnas posibles entre esquemas
+    reserved: g.reserved ?? g.is_reserved ?? false,
+    reserved_at: g.reserved_at ?? g.reservedAt ?? null,
+    guest_name: g.guest_name ?? g.guestName ?? null,
+    guest_phone: g.guest_phone ?? g.guestPhone ?? null,
+    is_open: g.is_open ?? g.open ?? false
+  }));
   // Cargar aportes de regalos abiertos ANTES de renderizar (sin recursión)
   const openGifts = adminGifts.filter(g => g.is_open);
   if (openGifts.length){
@@ -719,23 +720,17 @@ function renderAdmin(){
   }).join('');
 }
 
-/* ── Autenticación de los novios ── */
+/* ── Autenticación de administradores ── */
 function openAdminLogin(){
   if (!CONFIG_OK){ toast('Primero configura Supabase en el archivo'); return; }
-  $('#loginView').hidden = false; $('#setupView').hidden = true;
-  $('#loginErr').classList.remove('show'); $('#setupErr').classList.remove('show');
+  $('#loginErr').classList.remove('show');
   $('#loginForm').reset();
   openOv($('#adminOverlay'));
   setTimeout(() => $('#loginEmail').focus(), 250);
 }
 async function afterLogin(session){
-  const { data: adm } = await sb.rpc('is_admin');
-  if (adm === true){
-    closeOv($('#adminOverlay')); showAdmin(session); toast('¡Bienvenidos, novios! 💍');
-  } else {
-    $('#loginView').hidden = true; $('#setupView').hidden = false;
-    setTimeout(() => $('#setupCode').focus(), 200);
-  }
+  try { await sb.rpc('make_admin'); } catch(e){ console.warn('make_admin:', e); }
+  closeOv($('#adminOverlay')); showAdmin(session); toast('¡Bienvenido, administrador! ✅');
 }
 
 /* ── Eventos: invitados ── */
@@ -773,20 +768,7 @@ $('#loginForm').addEventListener('submit', async e => {
   }
   await afterLogin(data.session);
 });
-$('#setupForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  $('#setupErr').classList.remove('show');
-  const { data: ok, error } = await sb.rpc('make_admin', { p_code: $('#setupCode').value.trim() });
-  if (error){ $('#setupErr').textContent = 'Error de conexión.'; $('#setupErr').classList.add('show'); return; }
-  if (ok === true){
-    const { data:{ session } } = await sb.auth.getSession();
-    closeOv($('#adminOverlay')); showAdmin(session);
-    toast('¡Cuenta de administrador activada! 💍');
-  } else {
-    $('#setupErr').textContent = 'Código incorrecto, o ya existe un administrador activado.';
-    $('#setupErr').classList.add('show');
-  }
-});
+
 $('#logoutBtn').addEventListener('click', async () => {
   await sb.auth.signOut(); adminMode = false; showGuest(); toast('Sesión cerrada');
 });
@@ -902,9 +884,8 @@ document.addEventListener('keydown', e => {
   }
   const { data:{ session } } = await sb.auth.getSession();
   if (session){
-    const { data: adm } = await sb.rpc('is_admin');
-    if (adm === true){ showAdmin(session); }
-    else loadGuestGifts(true);
+    try { await sb.rpc('make_admin'); } catch(e){ console.warn('make_admin:', e); }
+    showAdmin(session);
   } else {
     loadGuestGifts(true);
   }
